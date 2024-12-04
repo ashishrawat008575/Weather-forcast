@@ -1,146 +1,121 @@
-const apiKey = '1a57d1d5f41764029769b694b4c94a41'; // Your actual OpenWeatherMap API key
-const apiUrl = 'https://api.openweathermap.org/data/2.5/weather';
-const forecastUrl = 'https://api.openweathermap.org/data/2.5/forecast';
+// OpenWeatherMap API key
+const apiKey = '1a57d1d5f41764029769b694b4c94a41';
 
-// Cache DOM elements
-const searchButton = document.getElementById('searchButton');
-const cityInput = document.getElementById('cityInput');
-const weatherData = document.getElementById('weatherData');
-const forecastData = document.getElementById('forecastData');
-const cityName = document.getElementById('cityName');
-const temp = document.getElementById('temp');
-const humidity = document.getElementById('humidity');
-const wind = document.getElementById('wind');
-const weatherIcon = document.getElementById('weatherIcon');
-const recentCitiesDropdown = document.getElementById('recentCitiesDropdown');
+// Function to format the date as dd/mm/yyyy
+function formatDate(date) {
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
 
-// Event listeners
-searchButton.addEventListener('click', handleSearchCity);
-recentCitiesDropdown.addEventListener('change', handleSelectCityFromDropdown);
+// Function to get the day name (e.g., Monday, Tuesday)
+function getDayName(date) {
+  const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  return daysOfWeek[date.getDay()];
+}
 
-// Fetch weather data from the API
-async function getWeatherData(city) {
+// Function to fetch weather data based on city (for 5-day forecast)
+async function fetchWeatherByCity(city) {
   try {
-    const response = await axios.get(`${apiUrl}?q=${city}&appid=${apiKey}&units=metric`);
-    if (response.status === 200) {
-      return response.data;  // Successfully fetched data
-    } else {
-      throw new Error('Error fetching weather data');
+    const response = await fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${apiKey}`);
+    if (!response.ok) {
+      throw new Error("City not found or API request failed.");
     }
+    const data = await response.json();
+    displayWeather(data);
   } catch (error) {
-    console.error('Error fetching weather data:', error.message);
-    alert('Error fetching weather data! ' + error.message);  // Show a more specific error
-    return null;
+    displayError(error.message);
   }
 }
 
-// Fetch 5-day forecast data from the API
-async function getFiveDayForecast(city) {
-  try {
-    const response = await axios.get(`${forecastUrl}?q=${city}&appid=${apiKey}&units=metric`);
-    return response.data.list;
-  } catch (error) {
-    console.error('Error fetching forecast data:', error.message);
-    alert('Error fetching forecast data!');
-    return null;
+// Function to fetch weather data based on current location (for 5-day forecast)
+async function fetchWeatherByLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const { latitude, longitude } = position.coords;
+      try {
+        const response = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&units=metric&appid=${apiKey}`);
+        if (!response.ok) {
+          throw new Error("Unable to fetch weather for current location.");
+        }
+        const data = await response.json();
+        displayWeather(data);
+      } catch (error) {
+        displayError(error.message);
+      }
+    }, (error) => {
+      displayError("Geolocation error: " + error.message);
+    });
+  } else {
+    displayError("Geolocation is not supported by this browser.");
   }
 }
 
-// Handle city search by the user
-async function handleSearchCity() {
-  const city = cityInput.value.trim();
-  if (!city) {
-    alert('Please enter a city name');
-    return;
-  }
+// Function to display weather data (current and 5-day forecast)
+function displayWeather(data) {
+  const weatherContainer = document.getElementById('weather-display');
+  const currentDate = new Date(); 
+  const formattedDate = formatDate(currentDate);
+  const dayName = getDayName(currentDate);
 
-  // Fetch current weather data
-  const weatherDataResponse = await getWeatherData(city);
-  if (!weatherDataResponse) return;
+  let weatherHTML = `
+    <div class="bg-white p-6 rounded-2xl shadow-xl hover:shadow-2xl transform transition-all hover:scale-105 text-center">
+      <h2 class="text-3xl font-semibold text-blue-700">${data.city.name}</h2>
+      <img src="https://openweathermap.org/img/wn/${data.list[0].weather[0].icon}.png" alt="${data.list[0].weather[0].description}" class="w-24 h-24 mx-auto">
+      <p class="text-3xl font-bold text-blue-700">${data.list[0].main.temp}°C</p>
+      <p class="text-lg text-gray-600">Humidity: ${data.list[0].main.humidity}%</p>
+      <p class="text-lg text-gray-600">Wind Speed: ${data.list[0].wind.speed} m/s</p>
+    </div>
+  `;
 
-  // Display the current weather
-  displayWeatherData(weatherDataResponse);
-
-  // Fetch 5-day forecast data
-  const forecastResponse = await getFiveDayForecast(city);
-  if (!forecastResponse) return;
-
-  // Display the forecast
-  displayForecastData(forecastResponse);
-
-  // Update the dropdown with recently searched cities
-  updateDropdown(city);
-}
-
-// Display current weather data
-function displayWeatherData(data) {
-  weatherData.classList.remove('hidden');
-  cityName.textContent = `${data.name}, ${data.sys.country}`;
-  temp.textContent = data.main.temp;
-  humidity.textContent = data.main.humidity;
-  wind.textContent = data.wind.speed;
-  weatherIcon.src = `https://openweathermap.org/img/wn/${data.weather[0].icon}.png`;
-}
-
-// Display 5-day forecast data
-function displayForecastData(forecastList) {
-  forecastData.innerHTML = ''; // Clear previous forecast data
-
-  forecastList.forEach((forecast) => {
-    if (forecast.dt_txt.includes('12:00:00')) { // Show weather at 12:00 PM for each day
-      const forecastCard = document.createElement('div');
-      forecastCard.classList.add('bg-white', 'p-4', 'rounded-lg', 'shadow-lg', 'text-center');
-      
-      const date = new Date(forecast.dt * 1000).toLocaleDateString();
-      const iconUrl = `https://openweathermap.org/img/wn/${forecast.weather[0].icon}.png`;
-
-      forecastCard.innerHTML = `
-        <p class="font-semibold">${date}</p>
-        <img src="${iconUrl}" alt="weather icon" class="mx-auto w-16 h-16" />
-        <p>Temp: ${forecast.main.temp}°C</p>
-        <p>Wind: ${forecast.wind.speed} km/h</p>
-        <p>Humidity: ${forecast.main.humidity}%</p>
+  // 5-Day Forecast Container
+  weatherHTML += `<div class="flex overflow-x-auto gap-6 mt-8">`;
+  data.list.forEach((forecast, index) => {
+    if (index % 8 === 0) { // Display one forecast per day (every 8th data point)
+      const forecastDate = new Date(forecast.dt * 1000);
+      const day = getDayName(forecastDate);
+      const date = formatDate(forecastDate);
+      weatherHTML += `
+        <div class="bg-gradient-to-r from-blue-600 to-blue-400 text-white p-6 rounded-xl shadow-xl w-64 text-center transform transition-all hover:scale-105 hover:shadow-2xl">
+          <p class="text-xl font-semibold">${day} (${date})</p>
+          <img src="https://openweathermap.org/img/wn/${forecast.weather[0].icon}.png" alt="${forecast.weather[0].description}" class="w-16 h-16 mx-auto">
+          <p class="text-2xl font-bold">${forecast.main.temp}°C</p>
+          <p class="text-lg">Humidity: ${forecast.main.humidity}%</p>
+          <p class="text-lg">Wind: ${forecast.wind.speed} m/s</p>
+        </div>
       `;
-
-      forecastData.appendChild(forecastCard);
     }
   });
+
+  weatherHTML += `</div>`;
+  weatherContainer.classList.remove('hidden');
+  weatherContainer.innerHTML = weatherHTML;
 }
 
-// Update the dropdown with recently searched cities
-function updateDropdown(city) {
-  let cities = JSON.parse(localStorage.getItem('recentCities')) || [];
-  if (!cities.includes(city)) {
-    cities.push(city);
-    localStorage.setItem('recentCities', JSON.stringify(cities));
+// Function to display error message
+function displayError(message) {
+  const weatherContainer = document.getElementById('weather-display');
+  weatherContainer.classList.remove('hidden');
+  weatherContainer.innerHTML = `
+    <div class="bg-red-600 text-white p-6 rounded-lg shadow-lg text-center w-full">
+      <h2 class="text-3xl font-semibold">Error</h2>
+      <p class="text-xl">${message}</p>
+    </div>
+  `;
+}
+
+// Event listener for the search button
+document.getElementById('search-btn').addEventListener('click', () => {
+  const city = document.getElementById('city-input').value;
+  if (city) {
+    fetchWeatherByCity(city);
+  } else {
+    displayError("Please enter a city name.");
   }
-  loadDropdown();
-}
+});
 
-// Load recently searched cities into the dropdown
-function loadDropdown() {
-  let cities = JSON.parse(localStorage.getItem('recentCities')) || [];
-  recentCitiesDropdown.innerHTML = '<option value="">Recently Searched Cities</option>'; // Reset dropdown
-  cities.forEach((city) => {
-    const option = document.createElement('option');
-    option.value = city;
-    option.textContent = city;
-    recentCitiesDropdown.appendChild(option);
-  });
-}
-
-// Handle selecting a city from the dropdown
-async function handleSelectCityFromDropdown(e) {
-  const selectedCity = e.target.value;
-  if (selectedCity) {
-    const weatherDataResponse = await getWeatherData(selectedCity);
-    if (!weatherDataResponse) return;
-    displayWeatherData(weatherDataResponse);
-    const forecastResponse = await getFiveDayForecast(selectedCity);
-    if (!forecastResponse) return;
-    displayForecastData(forecastResponse);
-  }
-}
-
-// Load recent cities when the page loads
-document.addEventListener('DOMContentLoaded', loadDropdown);
+// Event listener for the current location button
+document.getElementById('current-location-btn').addEventListener('click', () => {
+  fetchWeatherByLocation();
+});

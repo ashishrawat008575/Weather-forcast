@@ -1,5 +1,30 @@
-/* Custom Styles (optional) */
+/* styles.css */
 body {
-    font-family: 'Arial', sans-serif;
-  }
+  font-family: 'Arial', sans-serif;
+  background-color: #bde50a;
+}
+
+#weather-display img {
+  width: 50px;
+  height: 50px;
   
+}
+
+.forecast-day {
+  background-color: #1986f4;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.forecast-day img {
+  width: 60px;
+  height: 60px;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
