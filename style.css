@@ -1,13 +1,12 @@
-/* styles.css */
 body {
   font-family: 'Arial', sans-serif;
   background-color: #bde50a;
 }
 
+/* Adjusting image size within weather display */
 #weather-display img {
   width: 50px;
   height: 50px;
-  
 }
 
 .forecast-day {
@@ -22,9 +21,35 @@ body {
   height: 60px;
 }
 
-@media (max-width: 768px) {
+/* Adding custom styles for responsiveness */
+@media (max-width: 1024px) {
   .container {
     padding-left: 2rem;
     padding-right: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+  
+  .forecast-day {
+    padding: 15px;
+  }
+  
+  #search-btn, #current-location-btn {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .forecast-day {
+    padding: 10px;
+  }
+  
+  h2 {
+    font-size: 2rem;
   }
 }
